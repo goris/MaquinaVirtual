@@ -15,7 +15,7 @@ import lib.funcs.Funcion;
 public class MV {
 
 	static int cuad_actual; //Cuadruplo a ejecutarse
-	
+
 	/**
 	 * Espacios de memoria para los diferentes tipos de variables
 	 */
@@ -38,14 +38,18 @@ public class MV {
 	static HashMap<Integer, Integer> bool_mem_temp =
 			new HashMap<Integer, Integer>();
 	static HashMap<String, HashMap<Integer, Integer>> bool_mem;
-	
+
 	static HashMap<String, Funcion> map_funciones = 
 			new HashMap<String, Funcion>();
-	
+
 	static Stack<Funcion> stack_funciones = new Stack<Funcion> ();
-	
+
 	static String[] arr_cuadruplos;
 	static String[] arr_funciones;
+	
+	static int dir_regreso_num;
+	static int dir_regreso_bool;
+	static int dir_regreso_texto;
 
 	/**
 	 * @param args
@@ -56,6 +60,9 @@ public class MV {
 		String[] lineas = null;
 		init();
 		dirCuads = "cuacks.cuads";
+		dir_regreso_num = 1000;
+		dir_regreso_bool = 9000;
+		dir_regreso_texto = 12000;
 		try  
 		{
 			lineas = read(dirCuads);	    
@@ -254,6 +261,9 @@ public class MV {
 		case 18:
 			//Ret
 			cuad_actual = (stack_funciones.peek()).cuad_llamada;
+			if(cuad_s.length > 1) {
+				guardaParametroRegreso(cuad_s[1]);
+			}
 			stack_funciones.pop();
 			break;
 		case 19:
@@ -261,7 +271,7 @@ public class MV {
 			//log(op1_s + " : " + avail_s);
 			op1 = Integer.parseInt(op1_s);
 			parametroNuevo(op1, avail_s);
-			
+
 			break;
 		case 20:
 			break;
@@ -277,6 +287,28 @@ public class MV {
 			break;
 		}	
 		generaAccion(arr_cuadruplos[cuad_actual]);
+	}
+
+	/**
+	 * Pasa a la memoria local el valor de regreso de la funcion
+	 * @param str
+	 */
+	private static void guardaParametroRegreso(String str) {
+		// TODO Auto-generated method stub
+		int dir = Integer.parseInt(str);
+		if(dir > 1000 && dir < 9000) {
+			double valor = stack_funciones.peek().getValorNum(dir);
+			num_mem_global.put(dir_regreso_num - 1, valor);
+		} else if (dir > 9001 && dir < 12000) {
+			int valor = stack_funciones.peek().getValorBool(dir);
+			bool_mem_global.put(dir_regreso_bool - 1, valor);
+		} else {
+			log("E R R O R");
+			System.exit(1);
+		}
+		log("dir Regreso: " + dir_regreso_num);
+		
+
 	}
 
 	/**
@@ -316,7 +348,7 @@ public class MV {
 		// TODO Auto-generated method stub
 		Funcion func = stack_funciones.peek();
 		if(dir <= 9000 || dir >= 1000){
-			func.agregarValorDir(func.var_actual++, consigueValorMemoria(dir));
+			func.agregarValorNumDir(func.var_actual++, consigueValorMemoria(dir));
 		}
 	}
 
@@ -366,7 +398,6 @@ public class MV {
 				valor = num_mem_local.get(dir);
 			} else {
 				valor = ((stack_funciones.peek()).getMemNum()).get(dir);
-				log("valor: " + valor + "  dir: " + dir);
 			}
 		} else if ( dir >= 7001 && dir <= 9000) {
 			//num constante
@@ -376,10 +407,14 @@ public class MV {
 			valor = bool_mem_global.get(dir);
 		} else if (dir >= 10001 && dir <= 11000) {
 			//bool local
-			valor = bool_mem_global.get(dir);
+			if(stack_funciones.empty()) {
+				valor = bool_mem_local.get(dir);
+			} else {
+				valor = ((stack_funciones.peek()).getMemBool()).get(dir);
+			}
 		} else if (dir >= 11001 && dir <= 12000) {
 			//bool constante
-			//			valor_s = bool_mem_global.get(dir);
+			//valor_s = bool_mem_global.get(dir);
 			valor = bool_mem_global.get(dir);
 		}
 
@@ -391,13 +426,14 @@ public class MV {
 	 * @param op1
 	 * @return valor
 	 */
-	private static String consigueValorMemoriaS(int direccion) {
+/*	private static String consigueValorMemoriaS(int direccion) {
 		// TODO Auto-generated method stub
 		int dir = direccion;
 		String valor = "" + dir;
 
 		return valor;
 	}
+	*/
 
 	/**
 	 * Convierte cuadruplo de String a un arreglo de enteros
@@ -469,7 +505,7 @@ public class MV {
 				strr = scanner.nextLine();
 				if (!constantes && funcs) {
 					if(!strr.contains("&&&")) {
-//						log("3 " + strr);
+						//						log("3 " + strr);
 						nuevaFuncion(strr);
 					} else {
 						strr = scanner.nextLine();
@@ -480,7 +516,7 @@ public class MV {
 				if (constantes && !funcs){
 					int dir;
 					double valor;
-//					log("1" + strr);
+					//					log("1" + strr);
 					if(!strr.contains("&&&")) {
 						dir = obtenDir(strr);
 						valor = obtenValor(strr);
@@ -490,7 +526,7 @@ public class MV {
 					}
 				}
 				if ( !constantes && !funcs){
-//					log("2 "+strr);
+					//					log("2 "+strr);
 					if(!strr.contains("&&&")) {
 						llines.add(strr);
 					}
@@ -550,6 +586,7 @@ public class MV {
 		//log("d: " + dir + " v: " + valor);
 		if(dir >= 1000 && dir <= 3000) {
 			//num global
+			dir_regreso_num++;
 			num_mem_global.put(dir, valor);
 		} else if ( dir >= 3001 && dir <= 7000) {
 			//num local
@@ -563,13 +600,18 @@ public class MV {
 			num_mem_constante.put(dir, valor);
 		} else if (dir >= 9001 && dir <= 10000) {
 			//bool global
+			dir_regreso_bool++;
 			bool_mem_global.put(dir, (int)valor);
 		} else if (dir >= 10001 && dir <= 11000) {
 			//bool local
-			bool_mem_global.put(dir, (int)valor);
+			if(stack_funciones.empty()) {
+				bool_mem_local.put(dir, (int)valor);
+			} else {
+				(stack_funciones.peek().getMemBool()).put(dir, (int)valor);
+			}
 		} else if (dir >= 11001 && dir <= 12000) {
 			//bool constante
-			bool_mem_global.put(dir, (int)valor);
+			bool_mem_constante.put(dir, (int)valor);
 		}
 	}
 
