@@ -9,6 +9,7 @@ public class Funcion {
 	public int cuad_ini;
 	public int cuad_llamada;
 	public int var_actual;
+	public int return_value;
 	private HashMap<Integer, Double> num_mem = 
 			new HashMap<Integer, Double>();
 	private HashMap<Integer, Integer> bool_mem = 
@@ -25,9 +26,18 @@ public class Funcion {
 		
 	}
 	
+	public Funcion(String str, int tipo, int ini, int cuad, int a){
+		this.name = str;
+		this.tipo = tipo;
+		this.cuad_ini = ini;
+		this.cuad_llamada = cuad;
+		
+	}
+	
 	public HashMap<Integer, Double> getMemNum(){
 		return this.num_mem;
 	}
+	
 	public void setMemNum(HashMap<Integer, Double> num_mem){
 		this.num_mem = num_mem;
 	}
@@ -52,9 +62,9 @@ public class Funcion {
 	 * @param valor
 	 */
 	public void agregarValorNumDir(int dir, double valor){
-		if(dir <= 9000 || dir >= 1000){
+		if(dir <= 9000 && dir >= 1000){
 			num_mem.put(dir, valor);
-		} else if (dir > 9001 && dir < 12000) {
+		} else if (dir > 9000 && dir < 12000) {
 			bool_mem.put(dir, (int)valor);
 		}
 	}
@@ -82,8 +92,7 @@ public class Funcion {
 	 * @return valor
 	 */
 	public double getValorNum(int dir) {
-		// TODO Auto-generated method stub
-		if(dir < 9000) {
+		if(dir < 9000 && dir >= 1000) {
 			return num_mem.get(dir);
 		} 
 		return 0;
@@ -95,7 +104,6 @@ public class Funcion {
 	 * @return valor
 	 */
 	public int	 getValorBool(int dir) {
-		// TODO Auto-generated method stub
 		if(dir > 9000 && dir < 1200) {
 			return bool_mem.get(dir);
 		} 

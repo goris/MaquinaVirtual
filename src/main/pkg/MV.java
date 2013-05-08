@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Stack;
@@ -35,7 +34,7 @@ public class MV {
 			new HashMap<Integer, Integer>();	// 10001  ... 11000
 	static HashMap<Integer, Integer> bool_mem_constante = 
 			new HashMap<Integer, Integer>();	// 11001  ... 12000
-	static HashMap<Integer, Integer> bool_mem_temp =
+	static HashMap<Integer, Integer> bool_mem_tmp =
 			new HashMap<Integer, Integer>();
 	static HashMap<String, HashMap<Integer, Integer>> bool_mem;
 
@@ -43,13 +42,21 @@ public class MV {
 			new HashMap<String, Funcion>();
 
 	static Stack<Funcion> stack_funciones = new Stack<Funcion> ();
+	static Stack<Funcion> stack_dormidas = new Stack<Funcion> ();
 
 	static String[] arr_cuadruplos;
 	static String[] arr_funciones;
 	
-	static int dir_regreso_num;
-	static int dir_regreso_bool;
-	static int dir_regreso_texto;
+	static Stack<Integer> dir_regreso_num = new Stack<Integer>();
+	static Stack<Integer> dir_regreso_bool = new Stack<Integer>();
+	static Stack<Integer> dir_regreso_texto = new Stack<Integer>();
+	
+	static Stack<Integer> param_num = new Stack<Integer>();
+	static Stack<Integer> param_bool = new Stack<Integer>();
+	
+	static Funcion func_actual;
+	static double valor_tmp;
+		
 
 	/**
 	 * @param args
@@ -60,9 +67,9 @@ public class MV {
 		String[] lineas = null;
 		init();
 		dirCuads = "cuacks.cuads";
-		dir_regreso_num = 1000;
-		dir_regreso_bool = 9000;
-		dir_regreso_texto = 12000;
+		dir_regreso_num.add(1000);
+		dir_regreso_bool.add(9000);
+		dir_regreso_texto.add(12000);
 		try  
 		{
 			lineas = read(dirCuads);	    
@@ -155,8 +162,8 @@ public class MV {
 			oper2 = consigueValorMemoria(op2);
 			resultado = oper1 + oper2;
 			asignaValor(avail_i, resultado);
-			double aux = consigueValorMemoria(avail_i);
-			log(oper1 + " + " + oper2 + " val: " + aux);
+			//double aux = consigueValorMemoria(avail_i);
+			//log(oper1 + " + " + oper2 + " val: " + aux);
 			break;
 		case 1:
 			//Resta
@@ -254,17 +261,27 @@ public class MV {
 			break;
 		case 17:
 			//GoSub
-			copiarMemoriaAFuncion(op1_s);
-			stack_funciones.peek().cuad_llamada = cuad_actual;
+			dormirFuncion(op1_s);
+			func_actual = stack_funciones.pop();
+			func_actual.cuad_llamada = cuad_actual - 1;	
 			cuad_actual = Integer.parseInt(avail_s) - 1;
 			break;
 		case 18:
 			//Ret
-			cuad_actual = (stack_funciones.peek()).cuad_llamada;
-			if(cuad_s.length > 1) {
-				guardaParametroRegreso(cuad_s[1]);
+			/**
+ 			 * asignarle el valor 
+			 * de la temporal al la variable que esta en el gosub
+			 **/
+			
+			cuad_actual = func_actual.cuad_llamada;
+			valor_tmp = guardaParametroRegreso(cuad_s[1]);
+			if(stack_dormidas.empty()){
+				func_actual = null;
+			} else {
+				func_actual = stack_dormidas.pop();
 			}
-			stack_funciones.pop();
+			 // arr_cuadruplos[cuad_actual];
+			cambiarTemporalALocal(arr_cuadruplos[cuad_actual]);
 			break;
 		case 19:
 			//Param
@@ -288,67 +305,96 @@ public class MV {
 		}	
 		generaAccion(arr_cuadruplos[cuad_actual]);
 	}
+	
+	/**
+	 * Carga la memoria de la funcion a la memoria local
+	 * @param peek
+	 */
+	/*private static void cargarMemoriaDeLaFuncion(Funcion func) {
+		Iterator<Integer> it;
+		double valor;
+		
+		it = func.getMemNum().keySet().iterator();
+		while(it.hasNext()){
+			Integer key = it.next();
+			valor = (func.getMemNum()).get(key);
+			num_mem_local.put(key, valor);
+		}
+		
+		it = func.getMemBool().keySet().iterator();
+		while(it.hasNext()){
+			Integer key = it.next();
+			valor = (func.getMemBool()).get(key);
+			bool_mem_local.put(key, (int)valor);
+		}
+		
+	}*/
+	
+	/**
+	 * Cambia el valor de la variable Temporal a la direccion de regreso
+	 * @param str
+	 */
+	private static void cambiarTemporalALocal(String str) {
+		String[] arr;
+		String string = str;
+		int dir;
+		arr = (string.replaceAll(" ", "")).split(",");
+		dir = Integer.parseInt(arr[1]);
+		asignaValor(dir, valor_tmp);
+		valor_tmp = -1;
+		cuad_actual++;
+	}
 
 	/**
 	 * Pasa a la memoria local el valor de regreso de la funcion
 	 * @param str
 	 */
-	private static void guardaParametroRegreso(String str) {
+	private static double guardaParametroRegreso(String str) {
 		// TODO Auto-generated method stub
 		int dir = Integer.parseInt(str);
-		if(dir > 1000 && dir < 9000) {
-			double valor = stack_funciones.peek().getValorNum(dir);
-			num_mem_global.put(dir_regreso_num - 1, valor);
-		} else if (dir > 9001 && dir < 12000) {
-			int valor = stack_funciones.peek().getValorBool(dir);
-			bool_mem_global.put(dir_regreso_bool - 1, valor);
+		double valor = 0;
+		if(dir >= 1000 && dir <= 9000) {
+			valor = func_actual.getValorNum(dir);
+		} else if (dir >= 9001 && dir <= 12000) {
+			valor = func_actual.getValorBool(dir);
 		} else {
 			log("E R R O R");
 			System.exit(1);
 		}
-		log("dir Regreso: " + dir_regreso_num);
-		
-
+		return valor;
+		//log("dir Regreso: " + dir_regreso_num);
 	}
-
+	
 	/**
-	 * Copia los valores de la memoria local y temporal a la de
-	 * la funcion
+	 * Pasa una funcion de ejecucion a un una pila de funciones dormidas para 
+	 * luego poder usarlas al regreso. 
+	 * 
 	 * @param op1_s
 	 */
-	private static void copiarMemoriaAFuncion(String op1_s) {
-		// TODO Auto-generated method stub
-		double valor;
-		//log("Copiar memoria a funcion < " + op1_s + " >");
-		if(stack_funciones.size() < 2) {}
-		Funcion func = map_funciones.get(op1_s);
-		Iterator<Integer> iter = num_mem_local.keySet().iterator();
-		while(iter.hasNext()){
-			Integer key = (Integer) iter.next();
-			valor = num_mem_local.get(key);
-			num_mem_tmp.put(key, valor);
-			log("Local Copiar dir: " + key + "  valor  : " + valor);
+	private static void dormirFuncion(String str) {
+		if(func_actual == null) {
+			log("Estas en main");
+			
+		} else {
+			// stack_funciones.peek().return_value = Integer.parseInt(str);
+			stack_dormidas.push(func_actual);
 		}
-		iter = (func.getMemNum()).keySet().iterator();
-		while(iter.hasNext()) {
-			Integer key = (Integer)iter.next();
-			valor = (func.getMemNum()).get(key);
-			num_mem_tmp.put(key, valor);
-			log("Tmp Copiar dir: " + key + "  valor  : " + valor);
-		}
-		func.setMemNum(num_mem_tmp);
 	}
 
 	/**
-	 * Agrega un nuevo parametro a la funcion
+	 * Agrega un nuevo parametro a la funcion desde la memoria local hacia la
+	 * direccion relativa de la funcion 
 	 * @param op1
 	 * @param avail_s
 	 */
 	private static void parametroNuevo(int dir, String avail_s) {
-		// TODO Auto-generated method stub
 		Funcion func = stack_funciones.peek();
-		if(dir <= 9000 || dir >= 1000){
-			func.agregarValorNumDir(func.var_actual++, consigueValorMemoria(dir));
+		func.agregarValorNumDir(func.var_actual++, consigueValorMemoria(dir));
+		log("Dir Local: " + dir + " Dir Func: " + (func.var_actual - 1) + " Valor: " + consigueValorMemoria(dir));
+		if(dir <= 9000 && dir >= 1000){
+			param_num.add(dir);
+		} else if(dir > 9000 && dir < 12000 ) {
+			param_bool.add(dir);
 		}
 	}
 
@@ -357,9 +403,15 @@ public class MV {
 	 * @param op1_s
 	 */
 	private static void preparaFuncion(String op1_s) {
-		// TODO Auto-generated method stub
-		Funcion func = map_funciones.get(op1_s);
-		stack_funciones.push(func);	
+		Funcion tmp = map_funciones.get(op1_s);
+		int tipo, vars, inici;
+		tipo = tmp.tipo;
+		vars = tmp.cant_vars;
+		inici = tmp.cuad_ini;
+		
+		Funcion func = new Funcion(op1_s, tipo, vars, inici);
+		func.var_actual = 3001;
+		stack_funciones.push(func);
 	}
 
 	/**
@@ -368,7 +420,6 @@ public class MV {
 	 * @return func
 	 */
 	private static Funcion nuevaFuncion(String strr) {
-		// TODO Auto-generated method stub
 		String[] arr_;
 		arr_ = divideString(strr);
 		int a = Integer.parseInt(arr_[1]);
@@ -380,7 +431,7 @@ public class MV {
 	}
 
 	/**
-	 * Va a la memoria a buscar un valor numŽrico
+	 * Va a la memoria a buscar un valor numerico
 	 * @param op1
 	 * @return valor
 	 */
@@ -394,10 +445,10 @@ public class MV {
 			valor = num_mem_global.get(dir);
 		} else if ( dir >= 3001 && dir <= 7000) {
 			//num local		
-			if(stack_funciones.empty()) {
+			if(func_actual == null) {
 				valor = num_mem_local.get(dir);
 			} else {
-				valor = ((stack_funciones.peek()).getMemNum()).get(dir);
+				valor = (func_actual.getMemNum()).get(dir);
 			}
 		} else if ( dir >= 7001 && dir <= 9000) {
 			//num constante
@@ -407,10 +458,10 @@ public class MV {
 			valor = bool_mem_global.get(dir);
 		} else if (dir >= 10001 && dir <= 11000) {
 			//bool local
-			if(stack_funciones.empty()) {
+			if(func_actual == null) {
 				valor = bool_mem_local.get(dir);
 			} else {
-				valor = ((stack_funciones.peek()).getMemBool()).get(dir);
+				valor = (func_actual.getMemBool()).get(dir);
 			}
 		} else if (dir >= 11001 && dir <= 12000) {
 			//bool constante
@@ -475,6 +526,7 @@ public class MV {
 		//		bool_mem_constante.add(11001);;
 		//		
 		cuad_actual = 0;
+		valor_tmp = 0.0;
 
 		num_mem = new HashMap<String, HashMap<Integer, Double>>();
 		num_mem.put("mem_local", num_mem_global);
@@ -582,32 +634,31 @@ public class MV {
 	 * @param valor
 	 */
 	private static void asignaValor(int dir, double valor) {
-		// TODO Auto-generated method stub
 		//log("d: " + dir + " v: " + valor);
 		if(dir >= 1000 && dir <= 3000) {
 			//num global
-			dir_regreso_num++;
+			dir_regreso_num.add((dir_regreso_num.peek()) + 1);
 			num_mem_global.put(dir, valor);
 		} else if ( dir >= 3001 && dir <= 7000) {
 			//num local
-			if(stack_funciones.empty()) {
+			if(func_actual == null) {
 				num_mem_local.put(dir, valor);
 			} else {
-				(stack_funciones.peek().getMemNum()).put(dir, valor);
+				(func_actual.getMemNum()).put(dir, valor);
 			}
 		} else if ( dir >= 7001 && dir <= 9000) {
 			//num constante
 			num_mem_constante.put(dir, valor);
 		} else if (dir >= 9001 && dir <= 10000) {
 			//bool global
-			dir_regreso_bool++;
+			dir_regreso_bool.add((dir_regreso_bool.peek()) + 1);
 			bool_mem_global.put(dir, (int)valor);
 		} else if (dir >= 10001 && dir <= 11000) {
 			//bool local
-			if(stack_funciones.empty()) {
+			if(func_actual == null) {
 				bool_mem_local.put(dir, (int)valor);
 			} else {
-				(stack_funciones.peek().getMemBool()).put(dir, (int)valor);
+				(func_actual.getMemBool()).put(dir, (int)valor);
 			}
 		} else if (dir >= 11001 && dir <= 12000) {
 			//bool constante
