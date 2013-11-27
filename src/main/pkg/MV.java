@@ -1,5 +1,7 @@
 package main.pkg;
 
+import java.awt.EventQueue;
+import java.awt.image.BufferedImage;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -8,10 +10,17 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Stack;
 
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 import lib.funcs.Funcion;
 
-public class MV {
+public class MV extends JFrame {
+
+	/**
+	 * Random
+	 */
+	private static final long serialVersionUID = -553775470001704064L;
 
 	static int cuad_actual; //Cuadruplo a ejecutarse
 
@@ -46,23 +55,25 @@ public class MV {
 
 	static String[] arr_cuadruplos;
 	static String[] arr_funciones;
-	
+
 	static Stack<Integer> dir_regreso_num = new Stack<Integer>();
 	static Stack<Integer> dir_regreso_bool = new Stack<Integer>();
 	static Stack<Integer> dir_regreso_texto = new Stack<Integer>();
-	
+
 	static Stack<Integer> param_num = new Stack<Integer>();
 	static Stack<Integer> param_bool = new Stack<Integer>();
-	
+
 	static Funcion func_actual;
 	static double valor_tmp;
-		
+
+	static BufferedImage canvas;
+	static MyPanel panel1 = new MyPanel();;
 
 	/**
+	 * Inicia la apertura del archivo
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		String dirCuads;
 		String[] lineas = null;
 		init();
@@ -70,6 +81,18 @@ public class MV {
 		dir_regreso_num.add(1000);
 		dir_regreso_bool.add(9000);
 		dir_regreso_texto.add(12000);
+		System.out.println("Introduzca el nombre del archivo");
+		String file;
+		Scanner scanIn = new Scanner(System.in);
+		file = scanIn.nextLine();
+		scanIn.close();            
+		System.out.println("Archivo seleccionado: " + file);
+		dirCuads = file;
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				createAndShowGUI(); 
+			}
+		});
 		try  
 		{
 			lineas = read(dirCuads);	    
@@ -84,14 +107,25 @@ public class MV {
 		}
 		else {
 			consumeCuadruplos(lineas);
+
 		}
+	}
+
+	/**
+	 * Crea la interfaz para pintar
+	 */
+	protected static void createAndShowGUI() {
+		JFrame f = new JFrame("Swing Paint Demo");
+        f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
+        f.add(panel1);
+        f.setSize(800,600);
+        f.setVisible(true);
 	}
 
 	/**
 	 * Se iran resolviendo los diferentes cuadruplos ya generados
 	 */
 	private static void consumeCuadruplos(String[] cuads) {
-		// TODO Auto-generated method stub
 		String[] cuadruplos = cuads;
 		String[] aux;
 		arr_cuadruplos = new String[cuadruplos.length];
@@ -122,9 +156,8 @@ public class MV {
 	 * @param cuad_s
 	 */
 	private static void generaAccion(String cuadruplo) {
-		// TODO Auto-generated method stub
 		//log("cuad: " + cuad_actual);
-		log("cuad:" + cuadruplo);
+		//log("cuad:" + cuadruplo);
 		String [] cuad_s = divideString(cuadruplo);
 		int[] cuad_i;
 		int ope;
@@ -138,7 +171,8 @@ public class MV {
 		String avail_s = "";
 
 		//log("cuad[0]: " + cuad_s[0] + " " + cuad_s.length);
-		if(cuad_s[0].contains("16") || cuad_s[0].contains("17") || cuad_s[0].contains("19")) {
+		if(cuad_s[0].contains("16") || cuad_s[0].contains("17") || 
+				cuad_s[0].contains("19")) {
 			ope = Integer.parseInt(cuad_s[0].trim());
 			op1_s = cuad_s[1];
 			if(cuad_s.length >= 3) avail_s = cuad_s[3];
@@ -190,8 +224,8 @@ public class MV {
 			//Asignacion
 			oper1 = consigueValorMemoria(op1);
 			asignaValor(avail_i, oper1);
-			double auxEq = consigueValorMemoria(avail_i);
-			log(avail_i + ": " + auxEq);
+			//double auxEq = consigueValorMemoria(avail_i);
+			//log(avail_i + ": " + auxEq);
 			break;
 		case 5:
 			//Menor que
@@ -269,10 +303,10 @@ public class MV {
 		case 18:
 			//Ret
 			/**
- 			 * asignarle el valor 
-			 * de la temporal al la variable que esta en el gosub
+			 * asignarle el valor de la temporal al la dir de la 
+			 * variable que esta en el gosub
 			 **/
-			
+
 			cuad_actual = func_actual.cuad_llamada;
 			valor_tmp = guardaParametroRegreso(cuad_s[1]);
 			if(stack_dormidas.empty()){
@@ -280,7 +314,6 @@ public class MV {
 			} else {
 				func_actual = stack_dormidas.pop();
 			}
-			 // arr_cuadruplos[cuad_actual];
 			cambiarTemporalALocal(arr_cuadruplos[cuad_actual]);
 			break;
 		case 19:
@@ -291,45 +324,130 @@ public class MV {
 
 			break;
 		case 20:
+			System.out.println(consigueValorMemoria(op1));
 			break;
 		case 21:
+			creaLinea(ope,op1,op2, avail_i, arr_cuadruplos[cuad_actual]);
 			break;
 		case 22:
+			creaRectangulo(ope, op1, op2, avail_i, arr_cuadruplos[cuad_actual]);
 			break;
 		case 23:
-			break;	
-		case 99:
-			log("Fin de la ejecucion, champ!");
-			System.exit(0);
+			creaElipse(ope, op1, op2, avail_i, arr_cuadruplos[cuad_actual]);
 			break;
-		}	
-		generaAccion(arr_cuadruplos[cuad_actual]);
+		case 24:
+			creaTriangulo(ope, op1, op2, avail_i, arr_cuadruplos[cuad_actual]);
+			break;
+		case 99:
+			//log("Fin de la ejecucion, champ!");
+
+		}
+
+		EventQueue.invokeLater(new Runnable() {
+
+			public void run() {
+
+			}
+		});
+		if(cuad_actual < arr_cuadruplos.length)	
+			generaAccion(arr_cuadruplos[cuad_actual]);
 	}
-	
+
+	private static void creaElipse(int ope, int op1, int op2, int avail_i,
+			String string) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private static void creaRectangulo(int ope, int op1, int op2, int op3,
+			String string) {
+		int[] arr = obtenNuevosPuntos(string);
+		int[] puntos = new int [4];
+		
+		puntos[0] = (int) consigueValorMemoria(op1);
+		puntos[1] = (int) consigueValorMemoria(op2);
+		puntos[2] = (int) consigueValorMemoria(op3);
+		puntos[3] = (int) consigueValorMemoria(arr[1]);
+		
+		cuad_actual++;
+		
+		Square sqr = new Square(puntos[0],puntos[1],puntos[2],puntos[3]);
+		panel1.cuadrados.add(sqr);
+	}
+
+	private static void creaLinea(int ope, int op1, int op2, int op3,
+			String string) {
+		int[] arr = obtenNuevosPuntos(string);
+		int[] puntos = new int [4];
+		
+		puntos[0] = (int) consigueValorMemoria(op1);
+		puntos[1] = (int) consigueValorMemoria(op2);
+		puntos[2] = (int) consigueValorMemoria(op3);
+		puntos[3] = (int) consigueValorMemoria(arr[1]);
+		
+		cuad_actual++;
+		
+		Linea lin = new Linea(puntos[0],puntos[1],puntos[2],puntos[3]);
+		panel1.lineas.add(lin);
+	}
+
 	/**
-	 * Carga la memoria de la funcion a la memoria local
-	 * @param peek
+	 * Crea un triagualo
+	 * @param ope
+	 * @param pt1x
+	 * @param pt1y
+	 * @param pt2x
+	 * @param string
 	 */
-	/*private static void cargarMemoriaDeLaFuncion(Funcion func) {
-		Iterator<Integer> it;
-		double valor;
-		
-		it = func.getMemNum().keySet().iterator();
-		while(it.hasNext()){
-			Integer key = it.next();
-			valor = (func.getMemNum()).get(key);
-			num_mem_local.put(key, valor);
+	private static void creaTriangulo(int ope, int op1, int op2, int op3,
+			String string) {
+		int[] arr = obtenNuevosPuntos(string);
+		int[] puntos = new int [6];
+
+		puntos[0] = op1;
+		puntos[1] = op2;
+		puntos[2] = op3;
+
+		for(int i = 3; i < puntos.length; i++){
+			puntos[i] = arr[i - 2];
+			//log("punto: " + puntos[i]);
 		}
-		
-		it = func.getMemBool().keySet().iterator();
-		while(it.hasNext()){
-			Integer key = it.next();
-			valor = (func.getMemBool()).get(key);
-			bool_mem_local.put(key, (int)valor);
+		for(int i = 0; i < puntos.length; i++){
+			log(consigueValorMemoria(puntos[i]) + " i: " + i);
 		}
+		cuad_actual++;
+
+		int x[] = new int[3];
+		int y[] = new int[3];
+
+		x[0] = (int) consigueValorMemoria(puntos[0]);
+		x[1] = (int) consigueValorMemoria(puntos[2]);
+		x[2] = (int) consigueValorMemoria(puntos[4]);
+		y[0] = (int) consigueValorMemoria(puntos[1]);
+		y[1] = (int) consigueValorMemoria(puntos[3]);
+		y[2] = (int) consigueValorMemoria(puntos[5]);
 		
-	}*/
-	
+		Poligono ply = new Poligono(x,y,x.length);
+		panel1.poligonos.add(ply);
+
+	}
+
+	/**
+	 * Devuelve una serie de puntos de acuerdo al cuadruplo
+	 * @param string
+	 * @return puntos
+	 */
+	private static int[] obtenNuevosPuntos(String string) {
+		int[] arr = new int [4]; 
+		String[] tmp = (string.trim().replaceAll(" ", "")).split(",");
+		log("str: " + string);
+		for (int i = 1; i < tmp.length; i++){
+			arr[i] = Integer.parseInt(tmp[i]);
+		}
+		return arr;
+	}
+
+
 	/**
 	 * Cambia el valor de la variable Temporal a la direccion de regreso
 	 * @param str
@@ -364,7 +482,7 @@ public class MV {
 		return valor;
 		//log("dir Regreso: " + dir_regreso_num);
 	}
-	
+
 	/**
 	 * Pasa una funcion de ejecucion a un una pila de funciones dormidas para 
 	 * luego poder usarlas al regreso. 
@@ -373,10 +491,9 @@ public class MV {
 	 */
 	private static void dormirFuncion(String str) {
 		if(func_actual == null) {
-			log("Estas en main");
-			
+			//log("Estas en main");
+
 		} else {
-			// stack_funciones.peek().return_value = Integer.parseInt(str);
 			stack_dormidas.push(func_actual);
 		}
 	}
@@ -390,7 +507,7 @@ public class MV {
 	private static void parametroNuevo(int dir, String avail_s) {
 		Funcion func = stack_funciones.peek();
 		func.agregarValorNumDir(func.var_actual++, consigueValorMemoria(dir));
-		log("Dir Local: " + dir + " Dir Func: " + (func.var_actual - 1) + " Valor: " + consigueValorMemoria(dir));
+		//log("Dir Local: " + dir + " Dir Func: " + (func.var_actual - 1) + " Valor: " + consigueValorMemoria(dir));
 		if(dir <= 9000 && dir >= 1000){
 			param_num.add(dir);
 		} else if(dir > 9000 && dir < 12000 ) {
@@ -408,7 +525,7 @@ public class MV {
 		tipo = tmp.tipo;
 		vars = tmp.cant_vars;
 		inici = tmp.cuad_ini;
-		
+
 		Funcion func = new Funcion(op1_s, tipo, vars, inici);
 		func.var_actual = 3001;
 		stack_funciones.push(func);
@@ -477,19 +594,19 @@ public class MV {
 	 * @param op1
 	 * @return valor
 	 */
-/*	private static String consigueValorMemoriaS(int direccion) {
+	/*	private static String consigueValorMemoriaS(int direccion) {
 		// TODO Auto-generated method stub
 		int dir = direccion;
 		String valor = "" + dir;
 
 		return valor;
 	}
-	*/
+	 */
 
 	/**
 	 * Convierte cuadruplo de String a un arreglo de enteros
 	 * @param cuadruplo
-	 * @return
+	 * @return aux
 	 */
 	private static int[] convierteCuadruplo(String[] cuadruplo) {
 		// TODO Auto-generated method stub
